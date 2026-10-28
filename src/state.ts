@@ -153,6 +153,29 @@ export class SessionStore extends EventEmitter {
 			best.overflow = false;
 			changed = true;
 		}
+		// Swap while full: an overflow session in a strictly higher priority
+		// band evicts the lowest visible one. Strict, so two sessions in the
+		// same band never trade places back and forth.
+		// Each swap raises the visible priority total, so this terminates.
+		for (;;) {
+			// visible() hides SessionStart-only sessions; promoting one would
+			// just blank a tile.
+			const overflow = this.overflowList().filter((s) => s.lastEvent !== "SessionStart");
+			const visible = this.visible();
+			if (overflow.length === 0 || visible.length === 0) break;
+			let best = overflow[0];
+			for (const s of overflow) {
+				if (compareForPromotion(s, best) < 0) best = s;
+			}
+			let worst = visible[0];
+			for (const s of visible) {
+				if (compareForDemotion(s, worst) < 0) worst = s;
+			}
+			if (priorityScore(best.state) <= priorityScore(worst.state)) break;
+			worst.overflow = true;
+			best.overflow = false;
+			changed = true;
+		}
 		if (changed) this.emit("rebalanced");
 		return changed;
 	}
