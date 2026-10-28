@@ -9,6 +9,31 @@ A Stream Deck plugin that turns your deck into an **ambient conductor** for ever
 
 Built for the moment you've kicked off five Claude sessions across five repos and want to glance over and see which one is waiting on you.
 
+## About this fork
+
+A fork of [mark-mucchetti/stream-deck-claude-code](https://github.com/mark-mucchetti/stream-deck-claude-code) with three additions:
+
+- **Security hardening** — authenticated local server, metadata-only hook bridge, and more (see [Security](#security)). Offered upstream as a pull request.
+- **Claude desktop app support** — sessions in the desktop app's Code tab work like terminal sessions: pressing the tile brings Claude to the front, and the app's approval dialogs turn the tile red.
+- **Token Usage tile** — tokens used today, this month and in total, across every Claude Code session on your Mac.
+
+Built and tested on a Stream Deck+ (keys only; the dials and touch strip are left free).
+
+## Install from source
+
+Needs Node 20+ and the Stream Deck app (6.5+) on macOS.
+
+```sh
+git clone https://github.com/fredriklindstrom/stream-deck-claude-code.git
+cd stream-deck-claude-code
+npm ci
+npm run build
+ln -s "$(pwd)/com.virtuis.claudecode.sdPlugin" \
+  "$HOME/Library/Application Support/com.elgato.StreamDeck/Plugins/com.virtuis.claudecode.sdPlugin"
+```
+
+Then quit and reopen the Stream Deck app; **Claude Code** appears as a category in the action list.
+
 ## Using it
 
 Once the plugin is loaded into your Stream Deck app:
@@ -47,7 +72,17 @@ Each tile knows the terminal that started its session:
 - **iTerm2** — captured `ITERM_SESSION_ID` matches iTerm's AppleScript `unique id`, so we jump to *the exact session* (not just the iTerm app).
 - **Terminal.app** — match by controlling tty.
 - **VS Code / Cursor** — activate the app and raise the window whose title contains the project folder name. (AppleScript can't pick a specific integrated-terminal pane, so this is best-effort.)
+- **Claude desktop app** — bring the Claude app to the front. (It can't select a specific session inside the app.)
 - **Fallback** — open the project folder in Finder.
+
+## Token Usage tile
+
+Drag **Token Usage** from the *Claude Code* category onto a key. It shows Claude Code tokens used **today**, this **month**, and in **total**, read from every transcript under `~/.claude/projects` (subagents included).
+
+- The count is all-in: input + cache writes + cache reads + output. Cache reads dominate in long sessions, because every turn re-reads the conversation.
+- It refreshes every 10 seconds; press the key to refresh now. The first scan after a restart takes a few seconds on a large history.
+- Days and months follow your Mac's local time.
+- Everything is read locally; nothing is sent anywhere.
 
 ## Known caveats
 
