@@ -36,6 +36,20 @@
 					"TitleColor": "#ffffff"
 				}
 			]
+		},
+		{
+			"Name": "Token Usage",
+			"UUID": "com.virtuis.claudecode.usage",
+			"Icon": "imgs/actions/usage/icon",
+			"Tooltip": "Claude Code tokens used today, this month, and in total, across every session on this Mac. Press to refresh.",
+			"Controllers": ["Keypad"],
+			"UserTitleEnabled": false,
+			"DisableAutomaticStates": true,
+			"States": [
+				{
+					"Image": "imgs/actions/usage/key"
+				}
+			]
 		}
 	]
 }

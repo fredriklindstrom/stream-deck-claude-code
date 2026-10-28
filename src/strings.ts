@@ -19,4 +19,11 @@ export const STRINGS = {
 		setupHintTop: "setup",
 		setupHintBottom: "in inspector →",
 	},
+	/** Row labels on the Token Usage tile. */
+	usage: {
+		header: "Claude Code",
+		today: "today",
+		month: "month",
+		total: "total",
+	},
 };

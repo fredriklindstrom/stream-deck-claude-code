@@ -176,6 +176,18 @@ export function salientWord(title: string | undefined, project: string): string 
 	);
 }
 
+/** "842", "1.2k", "12k", "3.8M", "38M", "1.2B". Never exceeds 4 chars. */
+export function compactTokens(n: number): string {
+	const units: [number, string][] = [[1e9, "B"], [1e6, "M"], [1e3, "k"]];
+	for (const [size, suffix] of units) {
+		if (n >= size) {
+			const v = n / size;
+			return (v < 10 ? (Math.floor(v * 10) / 10).toFixed(1) : String(Math.floor(v))) + suffix;
+		}
+	}
+	return String(Math.floor(n));
+}
+
 function truncate(s: string, max: number): string {
 	if (s.length <= max) return s;
 	return s.slice(0, Math.max(1, max - 1)) + "…";
@@ -348,6 +360,40 @@ export function renderEmpty(hooksMissing = false): string {
 		${center}
 		${paintBand(caption, undefined, t.band, t.captionFg, 0, false)}
 	`));
+}
+
+const USAGE_HEADER_FONT = 17;
+const USAGE_HEADER_HEIGHT = 30;
+const USAGE_ROWS = 3;
+const USAGE_ROW_HEIGHT = (144 - USAGE_HEADER_HEIGHT) / USAGE_ROWS;
+const USAGE_LABEL_FONT = 16;
+const USAGE_VALUE_FONT = 24;
+
+/** Token Usage tile: "Claude Code" header, then three rows (today / month /
+ *  total), muted label left, bold value right. `undefined` totals = first
+ *  scan still running. */
+export function renderUsage(totals: { today: number; month: number; total: number } | undefined): string {
+	const rows: [string, number | undefined][] = [
+		[STRINGS.usage.today, totals?.today],
+		[STRINGS.usage.month, totals?.month],
+		[STRINGS.usage.total, totals?.total],
+	];
+	const body = rows
+		.map(([label, value], i) => {
+			const top = USAGE_HEADER_HEIGHT + i * USAGE_ROW_HEIGHT;
+			const baseline = Math.round(top + USAGE_ROW_HEIGHT / 2 + USAGE_VALUE_FONT * 0.35);
+			const divider = `<rect x="10" y="${Math.round(top)}" width="124" height="1" fill="#2a2f3a"/>`;
+			const text = value === undefined ? "…" : compactTokens(value);
+			return `${divider}
+				<text x="10" y="${baseline}" font-family="${FONT_STACK}" font-size="${USAGE_LABEL_FONT}"
+				      font-weight="300" fill="#9aa1b0">${esc(label)}</text>
+				<text x="134" y="${baseline}" text-anchor="end" font-family="${FONT_STACK}"
+				      font-size="${USAGE_VALUE_FONT}" font-weight="700" fill="${i === 0 ? "#f0a070" : "#ffffff"}">${esc(text)}</text>`;
+		})
+		.join("\n");
+	const header = `<text x="72" y="${Math.round(USAGE_HEADER_HEIGHT / 2 + USAGE_HEADER_FONT * 0.35) + 2}" text-anchor="middle"
+	      font-family="${FONT_STACK}" font-size="${USAGE_HEADER_FONT}" font-weight="700" fill="#d97757">${esc(STRINGS.usage.header)}</text>`;
+	return svgToDataUri(svgWrap(`<rect width="144" height="144" rx="12" fill="#14161c"/>${header}${body}`));
 }
 
 export function renderSession(session: Session, phase = 0, now = Date.now()): { image: string; title: string } {

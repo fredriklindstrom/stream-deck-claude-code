@@ -1,5 +1,6 @@
 import streamDeck, { LogLevel } from "@elgato/streamdeck";
 import { SessionAction } from "./actions/session-action.js";
+import { UsageAction } from "./actions/usage-action.js";
 import { ensureToken, installHooks, isPartiallyInstalled } from "./install.js";
 import { safeTranscriptPath, startServer } from "./server.js";
 import { SessionStore, type Session } from "./state.js";
@@ -25,6 +26,8 @@ const logger = {
 // until bind() runs.
 const sessionAction = new SessionAction();
 streamDeck.actions.registerAction(sessionAction);
+const usageAction = new UsageAction();
+streamDeck.actions.registerAction(usageAction);
 
 await streamDeck.connect();
 
@@ -42,6 +45,7 @@ try {
 
 const { port } = await startServer(store, { logger, token: await ensureToken() });
 sessionAction.bind(store, port);
+usageAction.start();
 
 // Top-up: if the user has already installed our hooks at some point, make
 // sure every event we currently care about is registered. This adds missing
