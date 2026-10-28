@@ -21,6 +21,8 @@ export type TerminalHint = {
 	tty?: string;
 	ppid?: string;
 	windowId?: string;
+	/** `CLAUDE_CODE_ENTRYPOINT`, e.g. `claude-desktop` for the Claude app's Code tab. */
+	entrypoint?: string;
 };
 
 export type Session = {
@@ -50,7 +52,13 @@ export const MAX_SESSIONS = 64;
 
 /** Tool names whose PreToolUse blocks on a human response. Kept in sync
  *  with the same constant in `server.ts`. */
-const WAITS_ON_USER_TOOLS = new Set(["AskUserQuestion", "ExitPlanMode"]);
+const WAITS_ON_USER_TOOLS = new Set([
+	"AskUserQuestion",
+	"ExitPlanMode",
+	"mcp__computer-use__request_access",
+	"mcp__computer-use__request_full_control",
+	"mcp__computer-use__request_teach_access",
+]);
 
 /** Priority for occupying a tile when slots are scarce. Higher = keeps the
  *  tile. `waiting` is most urgent (blocked on the human); `idle`/`done` are

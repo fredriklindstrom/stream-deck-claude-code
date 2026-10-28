@@ -267,6 +267,7 @@ KEYS = (
     "VSCODE_INJECTION",
     "SSH_TTY",
     "WINDOWID",
+    "CLAUDE_CODE_ENTRYPOINT",
 )
 
 def main() -> int:
@@ -283,6 +284,12 @@ def main() -> int:
         return 0
 
     body = {k: raw[k] for k in FIELDS if k in raw}
+    # The desktop app's "New session / Do it here" card blocks on the user
+    # only for initiation=offer; forward just that one field.
+    tool_input = raw.get("tool_input")
+    if raw.get("tool_name") == "mcp__ccd_session__start_session" and isinstance(tool_input, dict):
+        if "initiation" in tool_input:
+            body["tool_input"] = {"initiation": tool_input["initiation"]}
 
     env = {k: os.environ[k] for k in KEYS if os.environ.get(k)}
     tty = os.environ.get("STREAMDECK_CC_TTY", "")

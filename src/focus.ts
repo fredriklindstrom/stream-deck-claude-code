@@ -164,6 +164,12 @@ async function focusVSCodeByTitle(appName: string, cwd: string): Promise<boolean
 export async function focusSession(s: Session): Promise<void> {
 	if (process.platform !== "darwin") return; // macOS-only for MVP
 
+	// Claude desktop app (Code tab): no terminal to target, so raise the app.
+	if (s.terminal.entrypoint === "claude-desktop") {
+		const r = await osascript(`tell application "Claude" to activate`);
+		if (r.ok) return;
+	}
+
 	const term = (s.terminal.termProgram ?? "").toLowerCase();
 
 	if (term.includes("iterm")) {

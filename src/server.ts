@@ -14,6 +14,7 @@ type HookPayload = {
 	transcript_path?: string;
 	hook_event_name?: string;
 	tool_name?: string;
+	tool_input?: Record<string, unknown>;
 	notification_type?: string;
 	source?: string;
 	reason?: string;
@@ -84,12 +85,26 @@ function pickHint(env: Record<string, unknown> | undefined): TerminalHint {
 	if (v("TTY")?.startsWith("/dev/")) out.tty = v("TTY");
 	if (v("PPID")) out.ppid = v("PPID");
 	if (v("WINDOWID")) out.windowId = v("WINDOWID");
+	if (v("CLAUDE_CODE_ENTRYPOINT")) out.entrypoint = v("CLAUDE_CODE_ENTRYPOINT");
 	return out;
 }
 
 /** Tools that pause Claude on a human response. Their PreToolUse should
  *  surface as `waiting` so the tile pulses red. */
-const WAITS_ON_USER = new Set(["AskUserQuestion", "ExitPlanMode"]);
+const WAITS_ON_USER = new Set([
+	"AskUserQuestion",
+	"ExitPlanMode",
+	// Claude desktop app: these show an approval dialog and block until answered.
+	"mcp__computer-use__request_access",
+	"mcp__computer-use__request_full_control",
+	"mcp__computer-use__request_teach_access",
+]);
+
+function waitsOnUser(payload: HookPayload): boolean {
+	if (payload.tool_name && WAITS_ON_USER.has(payload.tool_name)) return true;
+	// Desktop app "New session / Do it here" card waits for the user's pick.
+	return payload.tool_name === "mcp__ccd_session__start_session" && payload.tool_input?.initiation === "offer";
+}
 
 function stateFor(payload: HookPayload): { state?: SessionState; tool?: string } {
 	switch (payload.hook_event_name) {
@@ -97,7 +112,7 @@ function stateFor(payload: HookPayload): { state?: SessionState; tool?: string }
 		case "UserPromptSubmit": return { state: "thinking" };
 		case "PreToolUse":
 			// Tools that block on the human are "waiting", not "working".
-			if (payload.tool_name && WAITS_ON_USER.has(payload.tool_name)) {
+			if (waitsOnUser(payload)) {
 				return { state: "waiting", tool: payload.tool_name };
 			}
 			return { state: "working", tool: payload.tool_name };
@@ -233,12 +248,14 @@ function sanitizePayload(raw: unknown): HookPayload {
 	};
 	const sid = field("session_id");
 	const cwd = field("cwd", 4096);
+	const toolInput = r.tool_input && typeof r.tool_input === "object" ? (r.tool_input as Record<string, unknown>) : undefined;
 	return {
 		session_id: sid && SESSION_ID_RE.test(sid) ? sid : undefined,
 		cwd: cwd && isAbsolute(cwd) ? cwd : undefined,
 		transcript_path: safeTranscriptPath(r.transcript_path),
 		hook_event_name: field("hook_event_name"),
 		tool_name: field("tool_name"),
+		tool_input: toolInput ? { initiation: str(toolInput.initiation, 32) } : undefined,
 		notification_type: field("notification_type"),
 		source: field("source"),
 		reason: field("reason"),
