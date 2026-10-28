@@ -15,10 +15,15 @@ export type UsageTotals = { today: number; month: number; total: number };
 
 const PROJECTS_DIR = join(homedir(), ".claude", "projects");
 const CHUNK = 1024 * 1024;
+/** Longest line we'll buffer. Usage lines are KBs; anything this long is a
+ *  huge tool payload (or garbage) and is skipped. */
+const MAX_LINE = 16 * 1024 * 1024;
 
 type Entry = { sum: number; day: string };
 
 const offsets = new Map<string, number>();
+/** Files whose last scan ended inside an oversized line still being skipped. */
+const skipping = new Set<string>();
 const messages = new Map<string, Entry>();
 const dayTotals = new Map<string, number>();
 let scanning: Promise<UsageTotals> | null = null;
@@ -85,20 +90,38 @@ async function scanFile(path: string, size: number): Promise<void> {
 		// Split on raw newline bytes so a chunk boundary never cuts a
 		// multi-byte character in half.
 		let carry = Buffer.alloc(0);
+		let skip = skipping.has(path);
 		while (offset < size) {
 			const chunk = Buffer.alloc(Math.min(CHUNK, size - offset));
 			const { bytesRead } = await fh.read(chunk, 0, chunk.length, offset);
 			if (bytesRead === 0) break;
 			offset += bytesRead;
-			const buf = Buffer.concat([carry, chunk.subarray(0, bytesRead)]);
+			let buf = chunk.subarray(0, bytesRead);
+			if (skip) {
+				// Inside an oversized line: drop bytes up to its newline.
+				const nl = buf.indexOf(0x0a);
+				if (nl < 0) continue;
+				buf = buf.subarray(nl + 1);
+				skip = false;
+			}
+			buf = carry.length ? Buffer.concat([carry, buf]) : buf;
 			const end = buf.lastIndexOf(0x0a);
 			if (end < 0) {
-				carry = buf;
+				// No newline yet. Past MAX_LINE, give up on this line rather
+				// than re-copying an ever-growing buffer (quadratic) forever.
+				if (buf.length > MAX_LINE) {
+					carry = Buffer.alloc(0);
+					skip = true;
+				} else {
+					carry = buf;
+				}
 				continue;
 			}
 			ingestBuffer(buf.subarray(0, end));
 			carry = buf.subarray(end + 1);
 		}
+		if (skip) skipping.add(path);
+		else skipping.delete(path);
 		// Leave a trailing partial line for the next scan.
 		offsets.set(path, offset - carry.length);
 	} finally {
