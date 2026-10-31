@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { promises as fs } from "node:fs";
 import { basename, isAbsolute, sep } from "node:path";
-import type { Session } from "./state.js";
+import { HOST_SESSION_RE, type Session } from "./state.js";
 
 type Result = { ok: boolean; out: string };
 
@@ -14,6 +14,21 @@ function osascript(script: string): Promise<Result> {
 		p.stderr.on("data", (d) => (err += d.toString()));
 		p.on("close", (code) => resolve({ ok: code === 0 && !err.trim(), out: out.trim() }));
 		p.on("error", () => resolve({ ok: false, out: "" }));
+	});
+}
+
+/** Deep link that opens one session in the Claude desktop app. The id is
+ *  re-checked here because hydrated state skips the server's validation. */
+export function desktopSessionUrl(hostSessionId: string | undefined): string | undefined {
+	if (!hostSessionId || !HOST_SESSION_RE.test(hostSessionId)) return undefined;
+	return `claude://claude.ai/epitaxy/${hostSessionId}`;
+}
+
+function openUrl(url: string): Promise<boolean> {
+	return new Promise((resolve) => {
+		const p = spawn("/usr/bin/open", [url]);
+		p.on("close", (code) => resolve(code === 0));
+		p.on("error", () => resolve(false));
 	});
 }
 
@@ -164,8 +179,11 @@ async function focusVSCodeByTitle(appName: string, cwd: string): Promise<boolean
 export async function focusSession(s: Session): Promise<void> {
 	if (process.platform !== "darwin") return; // macOS-only for MVP
 
-	// Claude desktop app (Code tab): no terminal to target, so raise the app.
+	// Claude desktop app (Code tab): no terminal to target. Open the session
+	// itself when we know the app's id for it, otherwise just raise the app.
 	if (s.terminal.entrypoint === "claude-desktop") {
+		const url = desktopSessionUrl(s.terminal.hostSessionId);
+		if (url && (await openUrl(url))) return;
 		const r = await osascript(`tell application "Claude" to activate`);
 		if (r.ok) return;
 	}

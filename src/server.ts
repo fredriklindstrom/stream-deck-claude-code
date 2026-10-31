@@ -3,7 +3,7 @@ import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import { AddressInfo } from "node:net";
 import { homedir } from "node:os";
 import { isAbsolute, join, normalize, sep } from "node:path";
-import type { SessionState, SessionStore, TerminalHint } from "./state.js";
+import { HOST_SESSION_RE, type SessionState, type SessionStore, type TerminalHint } from "./state.js";
 import { readTranscriptMeta } from "./transcript.js";
 
 export const DEFAULT_PORT = 13427;
@@ -86,6 +86,8 @@ function pickHint(env: Record<string, unknown> | undefined): TerminalHint {
 	if (v("PPID")) out.ppid = v("PPID");
 	if (v("WINDOWID")) out.windowId = v("WINDOWID");
 	if (v("CLAUDE_CODE_ENTRYPOINT")) out.entrypoint = v("CLAUDE_CODE_ENTRYPOINT");
+	const host = v("CLAUDE_CODE_HOST_SESSION_ID");
+	if (host && HOST_SESSION_RE.test(host)) out.hostSessionId = host;
 	return out;
 }
 

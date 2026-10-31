@@ -14,7 +14,7 @@ Built for the moment you've kicked off five Claude sessions across five repos an
 A fork of [mark-mucchetti/stream-deck-claude-code](https://github.com/mark-mucchetti/stream-deck-claude-code) with three additions:
 
 - **Security hardening** — authenticated local server, metadata-only hook bridge, and more (see [Security](#security)). Offered upstream as a pull request.
-- **Claude desktop app support** — sessions in the desktop app's Code tab work like terminal sessions: pressing the tile brings Claude to the front, and the app's approval dialogs turn the tile red.
+- **Claude desktop app support** — sessions in the desktop app's Code tab work like terminal sessions: pressing the tile opens that exact session in the app, and the app's approval dialogs turn the tile red.
 - **Token Usage tile** — tokens used today, this month and in total, across every Claude Code session on your Mac.
 
 Built and tested on a Stream Deck+ (keys only; the dials and touch strip are left free).
@@ -72,7 +72,7 @@ Each tile knows the terminal that started its session:
 - **iTerm2** — captured `ITERM_SESSION_ID` matches iTerm's AppleScript `unique id`, so we jump to *the exact session* (not just the iTerm app).
 - **Terminal.app** — match by controlling tty.
 - **VS Code / Cursor** — activate the app and raise the window whose title contains the project folder name. (AppleScript can't pick a specific integrated-terminal pane, so this is best-effort.)
-- **Claude desktop app** — bring the Claude app to the front. (It can't select a specific session inside the app.)
+- **Claude desktop app** — open that session in the Claude app via its `claude://` link, using the app's session id (`CLAUDE_CODE_HOST_SESSION_ID`, accepted only as `local_<uuid>`). Sessions that started before the bridge forwarded the id just bring the app to the front.
 - **Fallback** — open the project folder in Finder.
 
 ## Token Usage tile

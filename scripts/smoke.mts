@@ -164,5 +164,32 @@ for (const p of [
 assert((await finderTarget(join(ft, "project"))) === join(ft, "project"), "finderTarget should allow a plain folder");
 await rm(ft, { recursive: true, force: true });
 
+// Desktop session id: kept only in the app's exact shape, since it becomes
+// part of a claude:// URL on key press.
+const HOST = "local_96624f78-613d-46ac-b95c-65ad2dcf8870";
+const desktopEvent = (session_id: string, host: string) =>
+	post({
+		session_id,
+		cwd: "/tmp/desk",
+		hook_event_name: "UserPromptSubmit",
+		_env: { CLAUDE_CODE_ENTRYPOINT: "claude-desktop", CLAUDE_CODE_HOST_SESSION_ID: host },
+	});
+await desktopEvent("desk-ok", HOST);
+assert(store.get("desk-ok")?.terminal.hostSessionId === HOST, "a well-formed host session id should be kept");
+for (const [i, bad] of [
+	"local_96624f78-613d-46ac-b95c-65ad2dcf8870/../../x",
+	"local_96624f78-613d-46ac-b95c-65ad2dcf8870?x=1",
+	"LOCAL_96624F78-613D-46AC-B95C-65AD2DCF8870",
+	"https://example.com",
+	"local_",
+].entries()) {
+	await desktopEvent(`desk-bad-${i}`, bad);
+	assert(store.get(`desk-bad-${i}`)?.terminal.hostSessionId === undefined, `host session id must be dropped: ${bad}`);
+}
+const { desktopSessionUrl } = await import("../src/focus.js");
+assert(desktopSessionUrl(HOST) === `claude://claude.ai/epitaxy/${HOST}`, "deep link for a valid id");
+assert(desktopSessionUrl("local_x; open -a Calculator") === undefined, "deep link must refuse a malformed id");
+assert(desktopSessionUrl(undefined) === undefined, "no id, no deep link");
+
 await close();
 console.log("OK");

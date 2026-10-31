@@ -268,6 +268,7 @@ KEYS = (
     "SSH_TTY",
     "WINDOWID",
     "CLAUDE_CODE_ENTRYPOINT",
+    "CLAUDE_CODE_HOST_SESSION_ID",
 )
 
 def main() -> int:

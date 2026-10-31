@@ -9,6 +9,10 @@ export type SessionState =
 	| "done"
 	| "error";
 
+/** The desktop app's id for a session (`local_<uuid>`). It ends up in a
+ *  claude:// URL, so only that exact shape is accepted. */
+export const HOST_SESSION_RE = /^local_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 export type TerminalHint = {
 	termProgram?: string;
 	termSessionId?: string;
@@ -23,6 +27,9 @@ export type TerminalHint = {
 	windowId?: string;
 	/** `CLAUDE_CODE_ENTRYPOINT`, e.g. `claude-desktop` for the Claude app's Code tab. */
 	entrypoint?: string;
+	/** `CLAUDE_CODE_HOST_SESSION_ID`: the desktop app's own id for the
+	 *  session (`local_<uuid>`), used to open it directly. */
+	hostSessionId?: string;
 };
 
 export type Session = {
